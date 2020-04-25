@@ -46,6 +46,10 @@ case $key in
     CONFIGURE_NEXUS="configure-nexus"
     shift
     ;;
+    -r|--reuse)
+    REUSE=true
+    shift
+    ;;
     *)
     usage
     ;;
@@ -72,8 +76,16 @@ if [ "x86_64" != $ARCH ]; then
 fi
 
 # Start up build container
-CONTAINER_ID=`docker run -d $NEXUS $IMAGE_NAME /sbin/init`
-trap "docker rm -f $CONTAINER_ID" EXIT
+CONTID_FILE="/tmp/reuse_container_id"
+if [ $REUSE = true ]  && [ -f $CONTID_FILE ]; then
+  CONTAINER_ID=`cat $CONTID_FILE`
+else
+  CONTAINER_ID=`docker run -d $NEXUS $IMAGE_NAME /sbin/init`
+fi
+
+if [ $REUSE != true ]; then
+  trap "docker rm -f $CONTAINER_ID" EXIT
+fi
 
 # Copy bigtop repo into container
 docker cp $BIGTOP_HOME $CONTAINER_ID:/bigtop
@@ -88,7 +100,12 @@ RESULT=$?
 mkdir -p output
 docker cp $CONTAINER_ID:/bigtop/build .
 docker cp $CONTAINER_ID:/bigtop/output .
-docker rm -f $CONTAINER_ID
+
+if [ $REUSE = true ]; then
+  echo $CONTAINER_ID > $CONTID_FILE
+else
+  docker rm -f $CONTAINER_ID
+fi
 
 if [ $RESULT -ne 0 ]; then
     exit 1

@@ -647,6 +647,7 @@ def genTasks = { target ->
             '--prefix', _prefix,
             '--os', _OS,
             '--target', _target_pkg,
+            '--reuse',
     ]
     if ( project.hasProperty("nexus") ) {
       command.add('--nexus')
